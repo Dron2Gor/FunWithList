@@ -6,35 +6,35 @@ namespace FunWithList
 {
     public class DronList<T> : IEnumerable<T> where T : IEquatable<T>
     {
-        private const int _defaultCapacity = 10;
+        private const int _defaultCapacity = 8;
         private const int resizeThreshold = 75;
         private T[] _items;
-        private int _lastItemIndex;
+        private int _size;
 
         public DronList()
         {
             _items = new T[_defaultCapacity];
-            _lastItemIndex = 0;
+            _size = 0;
         }
 
-        public int Count => _lastItemIndex;
+        public int Count => _size;
 
         public void Add(T item)
         {
-            if (_items.Length - 1 == _lastItemIndex)
+            if (_size == _items.Length - 1)
             {
-                IncreaseSize();
+                ChangeSize(1.75);
             }
 
-            _items[_lastItemIndex] = item;
-            _lastItemIndex += 1;
+            _items[_size] = item;
+            _size += 1;
         }
 
 
         public void Clear()
         {
             _items = new T[_defaultCapacity];
-            _lastItemIndex = 0;
+            _size = 0;
         }
 
         public bool Contains(T item)
@@ -45,33 +45,32 @@ namespace FunWithList
 
         public int IndexOf(T item)
         {
-            for (int i = 0; i < _lastItemIndex; i++)
+            for (int i = 0; i < _size; i++)
             {
                 if (_items[i].Equals(item))
                 {
                     return i;
                 }
             }
-
             return -1;
         }
 
         public void Insert(int index, T item)
         {
-            if (index < 0 || index > _lastItemIndex)
+            if (index < 0 || index > _size)
             {
                 throw new ArgumentException("Index is out of range");
             }
 
-            if (_items.Length - 1 == _lastItemIndex)
+            if (_items.Length - 1 == _size)
             {
-                IncreaseSize();
+                ChangeSize(1.75);
             }
 
-            SlideElementToRight(index);
+            SlideElementsToRight(index);
 
             _items[index] = item;
-            _lastItemIndex += 1;
+            _size += 1;
         }
 
         public void Remove(T item)
@@ -83,32 +82,21 @@ namespace FunWithList
                 return;
             }
 
-            SlideElementToLeft(index);
+            SlideElementsToLeft(index);
 
-            _items[_lastItemIndex] = default(T);
-            _lastItemIndex -= 1;
+            _size -= 1;
 
             int lengthRatio = (Count / _items.Length) * 100;
 
             if (lengthRatio >= resizeThreshold)
             {
-                DecreaseSize();
+                ChangeSize(0.75);
             }
         }
-
-        private void IncreaseSize()
+        
+        private void ChangeSize(double ratio)
         {
-            ChangeSize(_items.Length + _items.Length * 75 / 100);
-        }
-
-        private void DecreaseSize()
-        {
-            ChangeSize(_lastItemIndex + _items.Length * 75 / 100);
-        }
-
-        private void ChangeSize(int newLength)
-        {
-            var newItems = new T[newLength];
+            var newItems = new T[(int)(_items.Length*ratio)];
             for (int i = 0; i < _items.Length; i++)
             {
                 newItems[i] = _items[i];
@@ -117,30 +105,86 @@ namespace FunWithList
             _items = newItems;
         }
 
-        private void SlideElementToRight(int index)
+        private void SlideElementsToRight(int index)
         {
-            for (int i = _lastItemIndex; i >= index; i--)
+            for (int i = _size-1; i >= index; i--)
             {
                 _items[i + 1] = _items[i];
             }
         }
 
-        private void SlideElementToLeft(int index)
+        private void SlideElementsToLeft(int index)
         {
-            for (int i = _lastItemIndex; i >= index; i--)
+            for (int i = index; i < _size; i++)
             {
-                _items[i + 1] = _items[i];
+                _items[i] = _items[i+1];
+            }
+        }
+        public T this[int i]
+        {
+            get
+            {
+                if (i>=_size)
+                {throw new ArgumentException("Index is out of range");}
+
+                return _items[i];
             }
         }
 
         public IEnumerator<T> GetEnumerator()
         {
-            throw new NotImplementedException();
+            return new MyEnumerator(this);
         }
 
         IEnumerator IEnumerable.GetEnumerator()
         {
             return GetEnumerator();
         }
+
+        internal class MyEnumerator : IEnumerator<T>
+        {
+            private readonly DronList<T> _dronList;
+            private int _position = -1;
+
+
+            public MyEnumerator(DronList<T> dronList)
+            {
+                _dronList = dronList;
+            }
+
+            public bool MoveNext()
+            {
+                if (_position < _dronList.Count-1)
+                {
+                    _position++;
+                    return true;
+                }
+
+                return false;
+            }
+
+            public void Reset()
+            {
+                _position = -1;
+            }
+
+            public T Current
+            {
+                get
+                {
+                    if (_position == -1 || _position >= _dronList.Count)
+                        throw new InvalidOperationException();
+                    return _dronList[_position];
+                }
+            }
+
+            object IEnumerator.Current => Current;
+
+            public void Dispose()
+            {
+            }
+        }
+
+        
     }
 }
